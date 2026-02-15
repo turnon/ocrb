@@ -35,26 +35,44 @@ class Extraction
   end
 end
 
-at_exit do
-  html = ERB.new(File.read('extractions.html.erb')).result(binding)
-  File.write('/tmp/abc.html', html)
-end
+class ImgLoc
+  def initialize(img_loc)
+    @img_loc = img_loc
+  end
 
-images_location = ARGV[0].to_s
+  def dir?
+    File.directory?(@img_loc)
+  end
 
-image_files =
-  if File.directory?(images_location)
-    image_extensions = %w[jpg jpeg png]
-    wildcast = File.join(images_location, "/**/*.{#{image_extensions.join(',')}}")
-    Dir.glob(wildcast, File::FNM_CASEFOLD)
-  elsif File.exist?(images_location)
-    [images_location]
-  else
+  def image_files
+    if dir?
+      image_extensions = %w[jpg jpeg png]
+      wildcast = File.join(@img_loc, "/**/*.{#{image_extensions.join(',')}}")
+      return Dir.glob(wildcast, File::FNM_CASEFOLD)
+    end
+
+    if File.exist?(images_location)
+      [@img_loc]
+    end
+
     []
   end
 
+  def result_loc
+    dir? ? @img_loc : File.dirname(@img_loc)
+  end
+end
+
+src = ImgLoc.new(ARGV[0].to_s)
+
+at_exit do
+  html = ERB.new(File.read('extractions.html.erb')).result(binding)
+  output_path = File.join(src.result_loc, 'extractions.html')
+  File.write(output_path, html)
+end
+
 extractions = []
-image_files.map do |image_path|
+src.image_files.map do |image_path|
   extractions << Extraction.new(image_path)
 end
 
